@@ -1,9 +1,9 @@
   class agent extends uvm_agent;
     `uvm_component_utils(agent)
-    driver drv;
+    driver      drv;
     inp_monitor inp_mon;
     out_monitor out_mon;
-    sequencer seqr;
+    sequencer   seqr;
 
     function new(string name = "agent", uvm_component parent = null);
       super.new(name, parent);

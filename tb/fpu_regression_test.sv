@@ -34,6 +34,8 @@
       run_seq(tc24_b2b_start_seq::type_id::create("s24"),          "TC24: Back-to-Back Start");
       run_seq(tc25_partial_reload_seq::type_id::create("s25"),     "TC25: Start With Partial Reload");
       run_seq(tc26_reset_during_op_seq::type_id::create("s26"),    "TC26: Reset During Operation");
+      run_seq(tc_rd_wr_prio_seq::type_id::create("s27"),           "TC27: Read->Write Priority on OE");
+      run_seq(tc_rd_start_prio_seq::type_id::create("s28"),        "TC28: Read->Start Priority on OE");
 
       #200;
       phase.drop_objection(this);

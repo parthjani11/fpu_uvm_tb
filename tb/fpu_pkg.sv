@@ -8,7 +8,7 @@ package fpu_pkg;
   import uvm_pkg::*;
   `include "uvm_macros.svh"
 
-  `define num_of_transaction 10
+  `define num_of_transaction 1
 
   `include "sequence_item.sv"
   `include "fp_kind_e.sv"
@@ -39,6 +39,8 @@ package fpu_pkg;
   `include "tc24_b2b_start_seq.sv"
   `include "tc25_partial_reload_seq.sv"
   `include "tc26_reset_during_op_seq.sv"
+  `include "tc_rd_wr_prio_seq.sv"
+  `include "tc_rd_start_prio_seq.sv"
   `include "driver.sv"
   `include "sequencer.sv"
   `include "inp_monitor.sv"

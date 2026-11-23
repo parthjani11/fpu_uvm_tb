@@ -1,3 +1,6 @@
+  // =========================================================================
+  // Subscriber & Environment
+  // =========================================================================
 class subscriber extends uvm_subscriber#(sequence_item);
     `uvm_component_utils(subscriber)
 

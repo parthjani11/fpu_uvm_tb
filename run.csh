@@ -1,6 +1,8 @@
 #!/bin/csh -f
 source /fetools/synopsys/source/source.sh
 
+# Usage:  ./run.csh                          -> fpu_regression_test (TC01..TC28)
+#         ./run.csh tc_rd_wr_prio_test       -> a single test
 set TEST = fpu_regression_test
 if ($#argv > 0) set TEST = $argv[1]
 

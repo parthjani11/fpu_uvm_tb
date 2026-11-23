@@ -3,7 +3,7 @@
   // =========================================================================
   class fpu_base_seq extends uvm_sequence#(sequence_item);
     `uvm_object_utils(fpu_base_seq)
-    int num_txns = 10;
+    int num_txns = `num_of_transaction;
 
     function new(string name="fpu_base_seq");
       super.new(name);

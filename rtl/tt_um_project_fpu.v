@@ -38,6 +38,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 wire wr_pulse    =  wr_s[0] & ~wr_s[1];
+wire wr_level    =  wr_s[0];
 wire start_pulse =  st_s[0] & ~st_s[1];
 wire rd_fall     = ~rd_s[0] &  rd_s[1];
 wire rd_level    =  rd_s[0];
@@ -146,7 +147,7 @@ always @(*) begin
 end
 
 // Output assignments
-assign uio_oe  = (rd_level && !busy) ? 8'hFF : 8'h00;
+assign uio_oe  = (!wr_level && rd_level && !busy) ? 8'hFF : 8'h00;
 assign uio_out = rd_byte;
 
 assign uo_out[0] = busy;
@@ -217,7 +218,7 @@ module fpu_core #(
     wire [MAN_FULL-1:0] m_small = {1'b1, mant_small};
 
     // Alignment: barrel-shift smaller mantissa right by exponent diff
-    // (if diff >= MAN_FULL the shifted mantissa becomes zero - correct)
+    // (if diff >= MAN_FULL the shifted mantissa becomes zero — correct)
     wire [EXP_W-1:0]    exp_diff        = exp_big - exp_small;
     wire [MAN_FULL-1:0] m_small_aligned = m_small >> exp_diff;
 
@@ -307,7 +308,7 @@ module fpu_core #(
                 // Exact cancellation → +0
                 else if (mant_sum[MAN_FULL-1:0] == {MAN_FULL{1'b0}})
                     result = {WIDTH{1'b0}};
-                // Underflow - lz exceeds available exponent room
+                // Underflow — lz exceeds available exponent room
                 else if (lz_ext >= exp_big)
                     result = {sign_big, {(WIDTH-1){1'b0}}};
                 // Left-normalise

@@ -1,6 +1,8 @@
 #!/bin/csh -f
 source /fetools/synopsys/source/source.sh
 
+# Compiles once, runs every individual test + the full regression,
+# merges all coverage into one urgReport.
 set CM = line+cond+fsm+tgl+branch+assert
 rm -rf cov.vdb urgReport
 
@@ -32,7 +34,8 @@ foreach T ( \
   tc18_err_clear_test tc19_start_before_ready_test \
   tc20_write_while_busy_test tc21_overflow_test tc22_underflow_test \
   tc23_large_exp_diff_test tc24_b2b_start_test tc25_partial_reload_test \
-  tc26_reset_during_op_test fpu_regression_test )
+  tc26_reset_during_op_test tc_rd_wr_prio_test tc_rd_start_prio_test \
+  fpu_regression_test )
   echo "=== Running $T ==="
   ./simv +vcs+lic+wait +UVM_TESTNAME=$T +UVM_VERBOSITY=UVM_LOW \
       -cm $CM -cm_dir ./cov.vdb -cm_name $T -l logs/sim_$T.log

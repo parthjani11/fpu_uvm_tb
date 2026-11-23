@@ -89,14 +89,15 @@ interface dut_if(input logic clk);
     else $error("[SVA_3.2_WR_BUSY] wr_ptr changed on write_en while busy=1");
 
   // 4.1 READ CHECK - Bus enable:
-  // uio_oe must be 8'hFF when read_en is high and busy is low, and 8'h00 otherwise
+  // uio_oe = 8'hFF only when read_en=1, write_en=0, and busy=0; else 8'h00
   property p_bus_enable;
-    logic rd_d;
+    logic rd_d, wr_d;
     @(posedge clk) disable iff (rst_n !== 1'b1)
-    (1'b1, rd_d = ui_in[1]) |=> (uio_oe === ((rd_d && !uo_out[0]) ? 8'hFF : 8'h00));
+    (1'b1, rd_d = ui_in[1], wr_d = ui_in[0]) |=>
+      (uio_oe === ((rd_d && !wr_d && !uo_out[0]) ? 8'hFF : 8'h00));
   endproperty
   a_bus_enable: assert property (p_bus_enable)
-    else $error("[SVA_4.1_OE] uio_oe=%h mismatch (expected FF when read_en=1 & busy=0, else 00)",
+    else $error("[SVA_4.1_OE] uio_oe=%h mismatch (expected FF only when read_en=1, write_en=0 & busy=0)",
                 uio_oe);
 
   // 5.1 LATENCY CHECK:

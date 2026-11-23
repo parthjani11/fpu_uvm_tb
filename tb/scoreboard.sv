@@ -21,8 +21,8 @@ class scoreboard extends uvm_scoreboard;
     bit         in_compute       = 0;
     bit         expect_err       = 0;
     bit         expect_special   = 0;
-    bit         prev2_write_en   = 0;
-    bit         prev2_start_en   = 0;
+    bit         prev_write_en    = 0;   // ui_in[0] of previous in_trans
+    bit         prev_start_en    = 0;   // ui_in[2] of previous in_trans
     logic [7:0] prev_uio_oe      = 8'h00;
 
     int pass = 0, fail = 0;
@@ -39,34 +39,35 @@ class scoreboard extends uvm_scoreboard;
     endfunction
 
     virtual task run_phase(uvm_phase phase);
-      sequence_item in_trans, out_trans, prev_trans;
-      prev_trans = sequence_item::type_id::create("prev_trans");
-      prev_trans.ui_in  = 8'h00;
-      prev_trans.uo_out = 8'h00;
+      sequence_item in_trans, in_next, out_trans;
+
+      in_fifo1.get(in_next);                 // prime the one-item lookahead
 
       forever begin
-        in_fifo1.get(in_trans);
-        out_fifo1.get(out_trans);
+        in_trans = in_next;
+        in_fifo1.get(in_next);               // cycle k+1 input (aligned with out_trans)
+        out_fifo1.get(out_trans);            // cycle k+1 output (1-cycle out_monitor delay)
 
         // ---------------------------------------------------------
-        // 0. RESET & PRE-RESET CHECK (TC 1, TC 26)
+        // 0. RESET & PRE-RESET HANDLING (TC 1, TC 26)
+        //    Async reset: out[k+1] is cleared when in[k+1].rst_n is low,
+        //    so skip normal checks whenever cycle k or k+1 is in reset.
         // ---------------------------------------------------------
-        if (in_trans.rst_n !== 1'b1) begin
-          wr_ptr_idx        = 0;
-          byte_count        = 0;
-          busy_cycles       = 0;
-          wr_chk_pending    = 0;
-          busy_chk_pending  = 0;
-          ign_start_chk     = 0;
-          exp_ready         = 0;
-          in_compute        = 0;
-          prev2_write_en    = 0;
-          prev2_start_en    = 0;
-          prev_uio_oe       = 8'h00;
-          prev_trans.ui_in  = 8'h00;
-          prev_trans.uo_out = 8'h00;
+        if (in_trans.rst_n !== 1'b1 || in_next.rst_n !== 1'b1) begin
+          wr_ptr_idx       = 0;
+          byte_count       = 0;
+          busy_cycles      = 0;
+          wr_chk_pending   = 0;
+          busy_chk_pending = 0;
+          ign_start_chk    = 0;
+          exp_ready        = 0;
+          in_compute       = 0;
+          prev_write_en    = 0;
+          prev_start_en    = 0;
+          prev_uio_oe      = 8'h00;
 
-          if (in_trans.rst_n === 1'b0) begin
+          // Zero check aligned to out_trans's exact cycle (in_next)
+          if (in_next.rst_n === 1'b0) begin
             if (out_trans.uo_out !== 8'h00 || out_trans.uio_out !== 8'h00 || out_trans.uio_oe !== 8'h00) begin
               fail++;
               `uvm_error("SCB_RST", $sformatf("Reset outputs non-zero! uo_out=%h uio_out=%h uio_oe=%h",
@@ -77,9 +78,11 @@ class scoreboard extends uvm_scoreboard;
         else begin
 
           // ---------------------------------------------------------
-          // 1. BIDIRECTIONAL OE CHECK (Clarification 3 & 7, TC 9)
+          // 1. BIDIRECTIONAL OE CHECK (TC 9 & Write/Busy Priority)
+          //    Note: Remove `&& in_trans.ui_in[0] == 1'b0` if checking
+          //    baseline spec where uio_oe depends only on read_en && !busy.
           // ---------------------------------------------------------
-          if (prev_trans.ui_in[1] == 1'b1 && out_trans.uo_out[0] == 1'b0) begin
+          if (in_trans.ui_in[1] == 1'b1 && in_trans.ui_in[0] == 1'b0 && out_trans.uo_out[0] == 1'b0) begin
             if (out_trans.uio_oe !== 8'hFF) begin
               fail++;
               `uvm_error("SCB_OE", $sformatf("Expected uio_oe=FF during read, got %h", out_trans.uio_oe))
@@ -87,12 +90,12 @@ class scoreboard extends uvm_scoreboard;
           end else begin
             if (out_trans.uio_oe !== 8'h00) begin
               fail++;
-              `uvm_error("SCB_OE", $sformatf("Expected uio_oe=00 outside read, got %h", out_trans.uio_oe))
+              `uvm_error("SCB_OE", $sformatf("Expected uio_oe=00 (outside read or write/busy priority), got %h", out_trans.uio_oe))
             end
           end
 
           // ---------------------------------------------------------
-          // 2. LOADING PHASE: Check wr_ptr & ready (Clarifications 1, 2, 4)
+          // 2. LOADING PHASE: wr_ptr & ready (Clarifications 1, 2, 4)
           // ---------------------------------------------------------
           if (wr_chk_pending) begin
             wr_chk_pending = 0;
@@ -108,16 +111,16 @@ class scoreboard extends uvm_scoreboard;
             end
           end
 
-          // Synchronized write event: 1 cycle after external wr_en rising edge (Clarification 1)
-          if (prev_trans.ui_in[0] == 1'b1 && !prev2_write_en && out_trans.uo_out[0] == 1'b0) begin
+          // Write event: rising edge on cycle k; data sampled on synchronized cycle k+1 (in_next)
+          if (in_trans.ui_in[0] == 1'b1 && !prev_write_en && out_trans.uo_out[0] == 1'b0) begin
             case (wr_ptr_idx)
-              0: operands[7:0]   = in_trans.uio_in;
-              1: operands[15:8]  = in_trans.uio_in;
-              2: operands[23:16] = in_trans.uio_in;
-              3: operands[31:24] = in_trans.uio_in;
+              0: operands[7:0]   = in_next.uio_in;
+              1: operands[15:8]  = in_next.uio_in;
+              2: operands[23:16] = in_next.uio_in;
+              3: operands[31:24] = in_next.uio_in;
             endcase
             wr_ptr_idx     = (wr_ptr_idx + 1) % 4;
-            exp_ready      = (wr_ptr_idx == 0); // Matches Table 6.2.2 & Sec 10.1 waveform
+            exp_ready      = (wr_ptr_idx == 0);
             wr_chk_pending = 1;
           end
 
@@ -137,7 +140,7 @@ class scoreboard extends uvm_scoreboard;
           end
 
           // ---------------------------------------------------------
-          // 3B. COMPUTATION PHASE: busy, done, error & latency (Clarification 5)
+          // 3B. COMPUTATION PHASE: busy, done, error & latency (Clarifications 5, 6)
           // ---------------------------------------------------------
           if (busy_chk_pending) begin
             busy_chk_pending = 0;
@@ -176,8 +179,8 @@ class scoreboard extends uvm_scoreboard;
             end
           end
 
-          // Synchronized start event: 1 cycle after external start rising edge (Clarifications 5 & 6)
-          if (prev_trans.ui_in[2] == 1'b1 && !prev2_start_en && out_trans.uo_out[0] == 1'b0) begin
+          // Start event: rising edge on cycle k; opcode sampled on synchronized cycle k+1 (in_next)
+          if (in_trans.ui_in[2] == 1'b1 && !prev_start_en && out_trans.uo_out[0] == 1'b0) begin
             if (out_trans.uo_out[3] == 1'b0) begin
               pre_start_done = out_trans.uo_out[1];
               ign_start_chk  = 1;
@@ -197,7 +200,7 @@ class scoreboard extends uvm_scoreboard;
               a_is_inf_nan = (exp_a == 5'h1F);
               b_is_inf_nan = (exp_b == 5'h1F);
 
-              opcode           = in_trans.ui_in[3]; // Sampled on synchronized start edge (Clarification 6)
+              opcode           = in_next.ui_in[3];
               busy_chk_pending = 1;
               byte_count       = 0;
 
@@ -280,12 +283,10 @@ class scoreboard extends uvm_scoreboard;
             end
           end
 
-          // Update cycle history
-          prev2_write_en    = prev_trans.ui_in[0];
-          prev2_start_en    = prev_trans.ui_in[2];
-          prev_uio_oe       = out_trans.uio_oe;
-          prev_trans.ui_in  = in_trans.ui_in;
-          prev_trans.uo_out = out_trans.uo_out;
+          // Update cycle history (inputs only; outputs are already aligned via out_monitor)
+          prev_write_en = in_trans.ui_in[0];
+          prev_start_en = in_trans.ui_in[2];
+          prev_uio_oe   = out_trans.uio_oe;
         end
       end
     endtask

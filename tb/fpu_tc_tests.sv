@@ -40,3 +40,5 @@
   `DEFINE_FPU_TEST(tc24_b2b_start_test,          tc24_b2b_start_seq)
   `DEFINE_FPU_TEST(tc25_partial_reload_test,     tc25_partial_reload_seq)
   `DEFINE_FPU_TEST(tc26_reset_during_op_test,    tc26_reset_during_op_seq)
+  `DEFINE_FPU_TEST(tc_rd_wr_prio_test,           tc_rd_wr_prio_seq)
+  `DEFINE_FPU_TEST(tc_rd_start_prio_test,        tc_rd_start_prio_seq)

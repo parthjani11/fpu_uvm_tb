@@ -16,6 +16,7 @@
 
     virtual task run_phase(uvm_phase phase);
       sequence_item req;
+      @(vif.OUT_MON.cb_out_mon);
       forever begin
         @(vif.OUT_MON.cb_out_mon);
         req = sequence_item::type_id::create("req");

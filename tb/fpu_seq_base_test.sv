@@ -1,5 +1,5 @@
   // =========================================================================
-  // Tests (Individual TC 1..26 + Full Regression Test)
+  // Tests (Individual TC 1..26, Priority Tests & Full Regression Test)
   // =========================================================================
   class fpu_seq_base_test extends uvm_test;
     `uvm_component_utils(fpu_seq_base_test)
