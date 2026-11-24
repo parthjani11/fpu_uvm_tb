@@ -42,3 +42,6 @@
   `DEFINE_FPU_TEST(tc26_reset_during_op_test,    tc26_reset_during_op_seq)
   `DEFINE_FPU_TEST(tc_rd_wr_prio_test,           tc_rd_wr_prio_seq)
   `DEFINE_FPU_TEST(tc_rd_start_prio_test,        tc_rd_start_prio_seq)
+  `DEFINE_FPU_TEST(tc_rsvd_ui_in_test,           tc_rsvd_ui_in_seq)
+  `DEFINE_FPU_TEST(tc_wr_start_same_test,        tc_wr_start_same_seq)
+  `DEFINE_FPU_TEST(tc_wr_lvl_rd_trig_test,       tc_wr_lvl_rd_trig_seq)

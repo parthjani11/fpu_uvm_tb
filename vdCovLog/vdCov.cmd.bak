@@ -1,0 +1,72 @@
+gui_set_pref_value -category {coveragesetting} -key {geninfodumping} -value 1
+gui_exclusion -set_force true
+gui_assert_mode -mode flat
+gui_class_mode -mode hier
+gui_excl_mgr_flat_list -on  0
+gui_covdetail_select -id  CovDetail.1   -name   Line
+verdiWindowWorkMode -win $_vdCoverage_1 -coverageAnalysis
+gui_open_cov  -hier cov.vdb -testdir {} -test {cov/fpu_regression_test_run01 cov/fpu_regression_test_run02 cov/fpu_regression_test_run03 cov/fpu_regression_test_run04 cov/fpu_regression_test_run05 cov/fpu_regression_test_run06 cov/fpu_regression_test_run07 cov/fpu_regression_test_run08 cov/fpu_regression_test_run09 cov/fpu_regression_test_run10} -merge MergedTest -db_max_tests 10 -fsm transition
+gui_list_expand -id  CoverageTable.1   -list {covtblInstancesList} top
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut   }
+gui_list_expand -id  CoverageTable.1   -list {covtblInstancesList} top.dut
+gui_list_expand -id CoverageTable.1   top.dut
+gui_list_action -id  CoverageTable.1 -list {covtblInstancesList} top.dut  -column {} 
+gui_covdetail_select -id  CovDetail.1   -name   Toggle
+gui_list_select -id CovDetail.1 -list tgl { _unused   }
+gui_exclude_items -id  CovDetail.1  -list { tgl }  -selected
+gui_list_select -id CovDetail.1 -list tgl { _unused  ena   }
+gui_exclude_items -id  CovDetail.1  -list { tgl }  -selected
+gui_list_select -id CovDetail.1 -list tgl { ena  {uo_out[7:0]}   }
+gui_list_select -id CovDetail.1 -list tglDetail { {uo_out[7:6]}   }
+gui_exclude_items -id  CovDetail.1  -list { tglDetail }  -selected
+gui_covdetail_select -id  CovDetail.1   -name   FSM
+gui_covdetail_select -id  CovDetail.1   -name   Condition
+gui_list_select -id CovDetail.1 -list cond { {(((!core_start)) && (core_done || core_err))}   }
+gui_list_select -id CovDetail.1 -list vector { 01   }
+gui_exclude_items -id  CovDetail.1  -list { vector }  -selected
+gui_covdetail_select -id  CovDetail.1   -name   Branch
+gui_covdetail_select -id  CovDetail.1   -name   Assert
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut  top.dut.u_fpu   }
+gui_covdetail_select -id  CovDetail.1   -name   Line
+gui_covdetail_select -id  CovDetail.1   -name   Toggle
+gui_covdetail_select -id  CovDetail.1   -name   Branch
+gui_covdetail_select -id  CovDetail.1   -name   Condition
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut.u_fpu  top.dut   }
+gui_list_action -id  CoverageTable.1 -list {covtblInstancesList} top.dut  -column {} 
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut  top.dut.u_fpu   }
+gui_covdetail_select -id  CovDetail.1   -name   Line
+gui_covdetail_select -id  CovDetail.1   -name   Toggle
+gui_covdetail_select -id  CovDetail.1   -name   Condition
+gui_covdetail_select -id  CovDetail.1   -name   Assert
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut.u_fpu   }
+gui_list_select -id CoverageTable.1 -list covtblInstancesList { top.dut.u_fpu   }
+gui_list_action -id  CoverageTable.1 -list {covtblInstancesList} top.dut.u_fpu  -column {} 
+gui_covdetail_select -id  CovDetail.1   -name   Branch
+gui_covdetail_select -id  CovDetail.1   -name   Condition
+gui_list_select -id CovDetail.1 -list cond { {((exp_big == EXP_INF) || (exp_small == EXP_INF))}   }
+gui_list_select -id CovDetail.1 -list vector { 01   }
+gui_exclude_items -id  CovDetail.1  -list { vector }  -selected
+gui_list_select -id CovDetail.1 -list cond { {((exp_big == EXP_INF) || (exp_small == EXP_INF))}  {((exp_small == {EXP_W {1'b0}}) && (mant_small == {MAN_W {1'b0}}))}   }
+gui_list_select -id CovDetail.1 -list vector { 01   }
+gui_exclude_items -id  CovDetail.1  -list { vector }  -selected
+gui_list_select -id CovDetail.1 -list vector { 01  10   }
+gui_exclude_items -id  CovDetail.1  -list { vector }  -selected
+gui_covdetail_select -id  CovDetail.1   -name   FSM
+gui_list_select -id CovDetail.1 -list fsmnames { ps   }
+gui_list_action -id  CovDetail.1 -list {fsmnames} ps
+gui_exclude_items -id  CovDetail.1  -list { fsmnames }  -selected
+gui_covdetail_select -id  CovDetail.1   -name   Toggle
+gui_list_select -id CovDetail.1 -list tgl { {lz_ext[4:0]}   }
+gui_list_select -id CovDetail.1 -list tglDetail { {lz_ext[4]}   }
+gui_exclude_items -id  CovDetail.1  -list { tglDetail }  -selected
+gui_list_select -id CovDetail.1 -list tgl { {lz_ext[4:0]}  {m_big[10:0]}   }
+gui_list_select -id CovDetail.1 -list tglDetail { {m_big[10]}   }
+gui_exclude_items -id  CovDetail.1  -list { tglDetail }  -selected
+gui_list_select -id CovDetail.1 -list tgl { {m_big[10:0]}  {m_small[10:0]}   }
+gui_exclude_items -id  CovDetail.1  -list { tgl }  -selected
+gui_covdetail_select -id  CovDetail.1   -name   Line
+verdiDockWidgetSetCurTab -dock widgetDock_<ExclMgr>
+gui_search_widget 
+gui_exclusion_file -save -file { /fetools/work_area/frontend/Batch_11/parth/fpu_uvm_tb_v2/fpu_uvm_tb/fpu_exclusion.el } -module -incremental -format newformat
+verdiDockWidgetSetCurTab -dock widgetDock_Message
+vdCovExit -noprompt

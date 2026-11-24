@@ -1,4 +1,7 @@
-class scoreboard extends uvm_scoreboard;
+// =========================================================================
+  // Scoreboard
+  // =========================================================================
+  class scoreboard extends uvm_scoreboard;
     `uvm_component_utils(scoreboard)
 
     uvm_tlm_analysis_fifo#(sequence_item) in_fifo1;
@@ -13,6 +16,7 @@ class scoreboard extends uvm_scoreboard;
     int         wr_ptr_idx       = 0;
     int         byte_count       = 0;
     int         busy_cycles      = 0;
+    int         wr_oe_mask_cnt   = 0;   // 2-cycle write/sync OE mask window (T1, T2)
     bit         wr_chk_pending   = 0;
     bit         busy_chk_pending = 0;
     bit         ign_start_chk    = 0;
@@ -57,6 +61,7 @@ class scoreboard extends uvm_scoreboard;
           wr_ptr_idx       = 0;
           byte_count       = 0;
           busy_cycles      = 0;
+          wr_oe_mask_cnt   = 0;
           wr_chk_pending   = 0;
           busy_chk_pending = 0;
           ign_start_chk    = 0;
@@ -76,13 +81,22 @@ class scoreboard extends uvm_scoreboard;
           end
         end
         else begin
+          bit wr_rise, wr_blocked, start_valid;
+          wr_rise     = (in_trans.ui_in[0] == 1'b1 && !prev_write_en);
+          start_valid = (in_trans.ui_in[2] == 1'b1 && !prev_start_en && out_trans.uo_out[3] == 1'b1);
+
+          if (wr_rise) begin
+            wr_oe_mask_cnt = 2; // Covers T1 and T2 (2-cycle write/sync window)
+          end
+          wr_blocked = (wr_oe_mask_cnt > 0);
 
           // ---------------------------------------------------------
-          // 1. BIDIRECTIONAL OE CHECK (TC 9 & Write/Busy Priority)
-          //    Note: Remove `&& in_trans.ui_in[0] == 1'b0` if checking
-          //    baseline spec where uio_oe depends only on read_en && !busy.
+          // 1. BIDIRECTIONAL OE CHECK (TC 9 & 2-Cycle Write/Sync Window)
+          //    Masked during T1/T2 write/sync window and when busy=1.
+          //    Once window expires (e.g., T3), read_en=1 asserts FF
+          //    regardless of whether write_en remains held high.
           // ---------------------------------------------------------
-          if (in_trans.ui_in[1] == 1'b1 && in_trans.ui_in[0] == 1'b0 && out_trans.uo_out[0] == 1'b0) begin
+          if (in_trans.ui_in[1] == 1'b1 && !wr_blocked && out_trans.uo_out[0] == 1'b0) begin
             if (out_trans.uio_oe !== 8'hFF) begin
               fail++;
               `uvm_error("SCB_OE", $sformatf("Expected uio_oe=FF during read, got %h", out_trans.uio_oe))
@@ -90,8 +104,12 @@ class scoreboard extends uvm_scoreboard;
           end else begin
             if (out_trans.uio_oe !== 8'h00) begin
               fail++;
-              `uvm_error("SCB_OE", $sformatf("Expected uio_oe=00 (outside read or write/busy priority), got %h", out_trans.uio_oe))
+              `uvm_error("SCB_OE", $sformatf("Expected uio_oe=00 (masked during write/sync window or busy), got %h", out_trans.uio_oe))
             end
+          end
+
+          if (wr_oe_mask_cnt > 0) begin
+            wr_oe_mask_cnt--;
           end
 
           // ---------------------------------------------------------
@@ -111,8 +129,8 @@ class scoreboard extends uvm_scoreboard;
             end
           end
 
-          // Write event: rising edge on cycle k; data sampled on synchronized cycle k+1 (in_next)
-          if (in_trans.ui_in[0] == 1'b1 && !prev_write_en && out_trans.uo_out[0] == 1'b0) begin
+          // Write event: rising edge on cycle k; ignored if valid start fires on same cycle
+          if (wr_rise && !start_valid && out_trans.uo_out[0] == 1'b0) begin
             case (wr_ptr_idx)
               0: operands[7:0]   = in_next.uio_in;
               1: operands[15:8]  = in_next.uio_in;

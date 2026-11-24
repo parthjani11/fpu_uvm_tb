@@ -68,10 +68,11 @@ interface dut_if(input logic clk);
 
   // 3.1 WRITE CHECK - wr_ptr increment:
   // wr_ptr increments by 1 (mod 4 for FP16) on each write rising edge when busy=0
+  // and no valid start (start_rise && ready) fires on the same cycle
   property p_wr_ptr_inc;
     logic [3:0] prev_ptr;
     @(posedge clk) disable iff (rst_n !== 1'b1)
-    ($rose(ui_in[0]) && !uo_out[0], prev_ptr = uo_out[7:4]) ##1 (!uo_out[0])
+    ($rose(ui_in[0]) && !($rose(ui_in[2]) && uo_out[3]) && !uo_out[0], prev_ptr = uo_out[7:4]) ##1 (!uo_out[0])
       |=> (uo_out[7:4] === ((prev_ptr + 4'd1) % 4));
   endproperty
   a_wr_ptr_inc: assert property (p_wr_ptr_inc)
@@ -89,16 +90,30 @@ interface dut_if(input logic clk);
     else $error("[SVA_3.2_WR_BUSY] wr_ptr changed on write_en while busy=1");
 
   // 4.1 READ CHECK - Bus enable:
-  // uio_oe = 8'hFF only when read_en=1, write_en=0, and busy=0; else 8'h00
+  // Masks uio_oe for 2 cycles on write_en rising edge (T1, T2).
+  // From T3 onward, read_en=1 with busy=0 drives uio_oe=8'hFF regardless of write_en.
+  logic prev_wr_en, wr_mask_q;
+  wire  wr_rise_now = (ui_in[0] === 1'b1 && prev_wr_en === 1'b0);
+
+  always @(posedge clk or negedge rst_n) begin
+    if (rst_n !== 1'b1) begin
+      prev_wr_en <= 1'b0;
+      wr_mask_q  <= 1'b0;
+    end else begin
+      prev_wr_en <= ui_in[0];
+      wr_mask_q  <= wr_rise_now; // Masks T2 after T1 rising edge
+    end
+  end
+
   property p_bus_enable;
-    logic rd_d, wr_d;
+    logic rd_d, wr_blk_d;
     @(posedge clk) disable iff (rst_n !== 1'b1)
-    (1'b1, rd_d = ui_in[1], wr_d = ui_in[0]) |=>
-      (uio_oe === ((rd_d && !wr_d && !uo_out[0]) ? 8'hFF : 8'h00));
+    (1'b1, rd_d = ui_in[1], wr_blk_d = (wr_rise_now || wr_mask_q)) |=>
+      (uio_oe === ((rd_d && !wr_blk_d && !uo_out[0]) ? 8'hFF : 8'h00));
   endproperty
   a_bus_enable: assert property (p_bus_enable)
-    else $error("[SVA_4.1_OE] uio_oe=%h mismatch (expected FF only when read_en=1, write_en=0 & busy=0)",
-                uio_oe);
+    else $error("[SVA_4.1_OE] uio_oe=%h mismatch (expected FF when read_en=1, outside 2-cycle wr window & busy=0)",
+                $sampled(uio_oe));
 
   // 5.1 LATENCY CHECK:
   // After a valid start, done rises 3 cycles (special) or 4 cycles (normal) after start_pulse

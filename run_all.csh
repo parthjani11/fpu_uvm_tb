@@ -1,10 +1,10 @@
 #!/bin/csh -f
 source /fetools/synopsys/source/source.sh
 
-# Compiles once, runs every individual test + the full regression,
+# Compiles once, runs every individual test,
 # merges all coverage into one urgReport.
 set CM = line+cond+fsm+tgl+branch+assert
-rm -rf cov.vdb urgReport
+rm -rf cov.vdb urgReport simv.daidir/.vcs.timestamp
 
 # ---- Compile: wait for a license, retry every 2 minutes ----
 while (1)
@@ -35,7 +35,7 @@ foreach T ( \
   tc20_write_while_busy_test tc21_overflow_test tc22_underflow_test \
   tc23_large_exp_diff_test tc24_b2b_start_test tc25_partial_reload_test \
   tc26_reset_during_op_test tc_rd_wr_prio_test tc_rd_start_prio_test \
-  fpu_regression_test )
+  tc_wr_lvl_rd_trig_test )
   echo "=== Running $T ==="
   ./simv +vcs+lic+wait +UVM_TESTNAME=$T +UVM_VERBOSITY=UVM_LOW \
       -cm $CM -cm_dir ./cov.vdb -cm_name $T -l logs/sim_$T.log

@@ -36,7 +36,9 @@
       run_seq(tc26_reset_during_op_seq::type_id::create("s26"),    "TC26: Reset During Operation");
       run_seq(tc_rd_wr_prio_seq::type_id::create("s27"),           "TC27: Read->Write Priority on OE");
       run_seq(tc_rd_start_prio_seq::type_id::create("s28"),        "TC28: Read->Start Priority on OE");
-
+      run_seq(tc_rsvd_ui_in_seq::type_id::create("s29"),           "TC29: Reserved ui_in[7:4] Toggle");
+      run_seq(tc_wr_start_same_seq::type_id::create("s30"),        "TC30: Write + Start Same Cycle");
+      run_seq(tc_wr_lvl_rd_trig_seq::type_id::create("s31"),       "TC31: Constant Write High -> Read Trigger");
       #200;
       phase.drop_objection(this);
     endtask
